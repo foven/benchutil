@@ -50,7 +50,7 @@ abort()
   for node in ${!Nodes[*]}
   do
     stop_moniter ${Nodes[${node}]}
-    sshpass -p ${SHPSW} ssh ${Nodes[${node}]} 'pkill fio'
+    sshpass -p ${SHPSW} ssh -o StrictHostKeyChecking=no ${Nodes[${node}]} 'pkill fio'
     #sshpass -p ${SHPSW} ssh ${Nodes[${node}]} 'pkill ping'
   done
   rmdata
@@ -77,14 +77,14 @@ start_moniter()
 stop_moniter()
 {
   echo "=========stop moniter=========="
-  sshpass -p ${SHPSW} ssh $1 'pkill sar'
+  sshpass -p ${SHPSW} ssh -o StrictHostKeyChecking=no $1 'pkill sar'
 }
 
 rmdata()
 {
   for key in ${!Nodes[*]}
   do
-    sshpass -p ${SHPSW} ssh ${Nodes[${key}]} "rm -f /root/hzbank.*"
+    sshpass -p ${SHPSW} ssh -o StrictHostKeyChecking=no ${Nodes[${key}]} "rm -f /root/hzbank.*"
   done
 }
 remotecmd()
@@ -107,10 +107,10 @@ chkprocess()
 
 copylog()
 {
-  sshpass -p ${SHPSW} scp root@${1}:${REMOTEDIR}/cpu.log ${2}/cpu_${3}.log
-  sshpass -p ${SHPSW} scp root@${1}:${REMOTEDIR}/disk.log ${2}/disk_${3}.log
-  sshpass -p ${SHPSW} scp root@${1}:${REMOTEDIR}/network.log ${2}/network_${3}.log
-  sshpass -p ${SHPSW} scp root@${1}:${REMOTEDIR}/mem.log ${2}/mem_${3}.log
+  sshpass -p ${SHPSW} scp -o StrictHostKeyChecking=no root@${1}:${REMOTEDIR}/cpu.log ${2}/cpu_${3}.log
+  sshpass -p ${SHPSW} scp -o StrictHostKeyChecking=no root@${1}:${REMOTEDIR}/disk.log ${2}/disk_${3}.log
+  sshpass -p ${SHPSW} scp -o StrictHostKeyChecking=no root@${1}:${REMOTEDIR}/network.log ${2}/network_${3}.log
+  sshpass -p ${SHPSW} scp -o StrictHostKeyChecking=no root@${1}:${REMOTEDIR}/mem.log ${2}/mem_${3}.log
 }
 
 parse()
@@ -251,7 +251,7 @@ do
 	  do
 	    set -x
 	    #sshpass -p ${SHPSW} ssh ${Nodes[${key}]} 'ping 192.168.10.1 > /dev/null & '
-	    eval "sshpass -p ${SHPSW} ssh ${Nodes[${key}]} 'fio -direct=${DIRECT} -numjobs=${njobs} -ioengine=${ENGINE} -size=${SIZE} -lockmem=1 -zero_buffers -time_based -rw=$rw -iodepth=${dep} -bs=${bs} -runtime=${RUNTIME} -output_format=json -output=${REMOTEDIR}/result.json -name=hzbank > ${REMOTEDIR}/fio.log 2>&1 &'"
+	    eval "sshpass -p ${SHPSW} ssh -o StrictHostKeyChecking=no ${Nodes[${key}]} 'fio -direct=${DIRECT} -numjobs=${njobs} -ioengine=${ENGINE} -size=${SIZE} -lockmem=1 -zero_buffers -time_based -rw=$rw -iodepth=${dep} -bs=${bs} -runtime=${RUNTIME} -output_format=json -output=${REMOTEDIR}/result.json -name=hzbank > ${REMOTEDIR}/fio.log 2>&1 &'"
 
 	    set +x
 	  done
@@ -287,7 +287,7 @@ do
 	  for key in ${!computeNodes[*]}
 	  do
             mkdir -p ${TESTDIR}/${key}/${prefix}
-	    copylog ${computeNodes[${key}]} $TESTDIR/${key}/${prefix} ${prefix}
+	        copylog ${computeNodes[${key}]} $TESTDIR/${key}/${prefix} ${prefix}
             parse ${TESTDIR}/${key}/${prefix} network_${prefix} eth1
             netplot ${TESTDIR}/${key}/${prefix} network_${prefix}_eth1
             parse ${TESTDIR}/${key}/${prefix} network_${prefix} eth2
@@ -302,7 +302,7 @@ do
           for key in ${!Nodes[*]}
 	  do
             mkdir -p ${TESTDIR}/${key}/${prefix}
-	    copylog ${Nodes[${key}]} $TESTDIR/${key}/${prefix} ${prefix}
+	        copylog ${Nodes[${key}]} $TESTDIR/${key}/${prefix} ${prefix}
             parse ${TESTDIR}/${key}/${prefix} network_${prefix} eth1
             netplot ${TESTDIR}/${key}/${prefix} network_${prefix}_eth1
             parse ${TESTDIR}/${key}/${prefix} cpu_${prefix} all
@@ -311,8 +311,8 @@ do
             diskplot ${TESTDIR}/${key}/${prefix} disk_${prefix}_xvda
             memplot ${TESTDIR}/${key}/${prefix} mem_${prefix}
 	    #set -x
-            sshpass -p ${SHPSW} scp root@${Nodes[${key}]}:${REMOTEDIR}/fio.log ${TESTDIR}/${key}/${prefix}/fio_${prefix}.log
-            sshpass -p ${SHPSW} scp root@${Nodes[${key}]}:${REMOTEDIR}/result.json ${TESTDIR}/${key}/${prefix}/result_${prefix}.json
+            sshpass -p ${SHPSW} scp -o StrictHostKeyChecking=no root@${Nodes[${key}]}:${REMOTEDIR}/fio.log ${TESTDIR}/${key}/${prefix}/fio_${prefix}.log
+            sshpass -p ${SHPSW} scp -o StrictHostKeyChecking=no root@${Nodes[${key}]}:${REMOTEDIR}/result.json ${TESTDIR}/${key}/${prefix}/result_${prefix}.json
             #set +x
 	  done 
 
