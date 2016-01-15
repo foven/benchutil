@@ -287,7 +287,11 @@ do
 	  for key in ${!computeNodes[*]}
 	  do
             mkdir -p ${TESTDIR}/${key}/${prefix}
+<<<<<<< HEAD
             copylog ${computeNodes[${key}]} $TESTDIR/${key}/${prefix} ${prefix}
+=======
+	        copylog ${computeNodes[${key}]} $TESTDIR/${key}/${prefix} ${prefix}
+>>>>>>> cd92afc6b067a6b6c1c0cda3b5ce78a370942d7e
             parse ${TESTDIR}/${key}/${prefix} network_${prefix} eth1
             netplot ${TESTDIR}/${key}/${prefix} network_${prefix}_eth1
             parse ${TESTDIR}/${key}/${prefix} network_${prefix} eth2
@@ -302,7 +306,11 @@ do
           for key in ${!Nodes[*]}
 	  do
             mkdir -p ${TESTDIR}/${key}/${prefix}
+<<<<<<< HEAD
             copylog ${Nodes[${key}]} $TESTDIR/${key}/${prefix} ${prefix}
+=======
+	        copylog ${Nodes[${key}]} $TESTDIR/${key}/${prefix} ${prefix}
+>>>>>>> cd92afc6b067a6b6c1c0cda3b5ce78a370942d7e
             parse ${TESTDIR}/${key}/${prefix} network_${prefix} eth1
             netplot ${TESTDIR}/${key}/${prefix} network_${prefix}_eth1
             parse ${TESTDIR}/${key}/${prefix} cpu_${prefix} all
