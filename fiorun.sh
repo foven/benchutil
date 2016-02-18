@@ -244,7 +244,7 @@ do
             echo "time:${Time}"
 	        FIN=1
 	        I=0
-            for node in ${!Nodes[*]}
+            for node in ${!Nodes[*]} 
             do
               chkprocess ${Nodes[${node}]} fio
 			  if [ $? != 0 ]
