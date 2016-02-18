@@ -225,52 +225,52 @@ do
         do
           prefix="engine${ENGINE}_rw${rw}_bs${bs}_io${dep}_njob${njobs}"
           echo "clear mem"
-	      loop remotecmd "echo 1 > /proc/sys/vm/drop_caches"
+          loop remotecmd "echo 1 > /proc/sys/vm/drop_caches"
 
-	      echo "start monitor"
-	      loop start_moniter
+          echo "start monitor"
+          loop start_moniter
 	
-	      echo "=============run fio============"
-	      for key in ${!Nodes[*]}
-	      do
-	        set -x
-	        #sshpass -p ${SHPSW} ssh ${Nodes[${key}]} 'ping 192.168.10.1 > /dev/null & '
-	        eval "sshpass -p ${SHPSW} ssh -o StrictHostKeyChecking=no ${Nodes[${key}]} 'fio -direct=${DIRECT} -numjobs=${njobs} -ioengine=${ENGINE} -size=${SIZE} -lockmem=1 -zero_buffers -time_based -rw=$rw -iodepth=${dep} -bs=${bs} -runtime=${RUNTIME} -output=${REMOTEDIR}/result.json -name=hzbank > ${REMOTEDIR}/fio.log 2>&1 &'"
-	        set +x
-	      done
+          echo "=============run fio============"
+          for key in ${!Nodes[*]}
+          do
+            set -x
+            #sshpass -p ${SHPSW} ssh ${Nodes[${key}]} 'ping 192.168.10.1 > /dev/null & '
+            eval "sshpass -p ${SHPSW} ssh -o StrictHostKeyChecking=no ${Nodes[${key}]} 'fio -direct=${DIRECT} -numjobs=${njobs} -ioengine=${ENGINE} -size=${SIZE} -lockmem=1 -zero_buffers -time_based -rw=$rw -iodepth=${dep} -bs=${bs} -runtime=${RUNTIME} -output=${REMOTEDIR}/result.json -name=hzbank > ${REMOTEDIR}/fio.log 2>&1 &'"
+            set +x
+          done
           Time=0
           while :
           do
             echo "time:${Time}"
-	        FIN=1
-	        I=0
+            FIN=1
+            I=0
             for node in ${!Nodes[*]} 
             do
               chkprocess ${Nodes[${node}]} fio
-			  if [ $? != 0 ]
+              if [ $? != 0 ]
               then
-	            x=$[10**${I}]
-		        #echo ${x}
-		        FIN=`expr ${FIN} - ${x}`
+                x=$[10**${I}]
+                #echo ${x}
+                FIN=`expr ${FIN} - ${x}`
                 #echo ${FIN}
-	          fi
+              fi
               I=`expr ${I} + 1`
             done
-	        if [ ${FIN} == 0 ]
+            if [ ${FIN} == 0 ]
             then
-	          break
-	        fi
+              break
+            fi
             sleep ${INTERVALTIME}
             Time=`expr ${Time} + ${INTERVALTIME}`
           done          
           loop stop_moniter
 
-	      echo "==============copy back==========="
-	      for key in ${!computeNodes[*]}
-	      do
+          echo "==============copy back==========="
+          for key in ${!computeNodes[*]}
+          do
             mkdir -p ${TESTDIR}/${key}/${prefix}
             copylog ${computeNodes[${key}]} $TESTDIR/${key}/${prefix} ${prefix}
-	        copylog ${computeNodes[${key}]} $TESTDIR/${key}/${prefix} ${prefix}
+            copylog ${computeNodes[${key}]} $TESTDIR/${key}/${prefix} ${prefix}
             parse ${TESTDIR}/${key}/${prefix} network_${prefix} eth1
             netplot ${TESTDIR}/${key}/${prefix} network_${prefix}_eth1
             parse ${TESTDIR}/${key}/${prefix} network_${prefix} eth2
@@ -280,13 +280,13 @@ do
             parse ${TESTDIR}/${key}/${prefix} disk_${prefix} sdg
             diskplot ${TESTDIR}/${key}/${prefix} disk_${prefix}_sdg
             memplot ${TESTDIR}/${key}/${prefix} mem_${prefix}            
-	      done
+          done
         
           for key in ${!Nodes[*]}
-	      do
+          do
             mkdir -p ${TESTDIR}/${key}/${prefix}
             copylog ${Nodes[${key}]} $TESTDIR/${key}/${prefix} ${prefix}
-	        copylog ${Nodes[${key}]} $TESTDIR/${key}/${prefix} ${prefix}
+            copylog ${Nodes[${key}]} $TESTDIR/${key}/${prefix} ${prefix}
             parse ${TESTDIR}/${key}/${prefix} network_${prefix} eth1
             netplot ${TESTDIR}/${key}/${prefix} network_${prefix}_eth1
             parse ${TESTDIR}/${key}/${prefix} cpu_${prefix} all
@@ -294,12 +294,11 @@ do
             parse ${TESTDIR}/${key}/${prefix} disk_${prefix} xvda
             diskplot ${TESTDIR}/${key}/${prefix} disk_${prefix}_xvda
             memplot ${TESTDIR}/${key}/${prefix} mem_${prefix}
-	        #set -x
+            #set -x
             sshpass -p ${SHPSW} scp -o StrictHostKeyChecking=no root@${Nodes[${key}]}:${REMOTEDIR}/fio.log ${TESTDIR}/${key}/${prefix}/fio_${prefix}.log
             sshpass -p ${SHPSW} scp -o StrictHostKeyChecking=no root@${Nodes[${key}]}:${REMOTEDIR}/result.json ${TESTDIR}/${key}/${prefix}/result_${prefix}.json
             #set +x
-	      done 
-
+          done 
         done
       done
     done
