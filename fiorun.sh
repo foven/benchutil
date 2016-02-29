@@ -1,27 +1,36 @@
 #!/usr/bin/bash
 LOGDIR=./log
-TESTDIR=$LOGDIR/`date +%Y%m%d%H%M`
+TESTDIR=$LOGDIR/`date +%Y%m%d%H%M$1`
 REMOTEDIR=/tmp
 INTERVALTIME=10
-SHPSW=123456
+SHPSW=hengtian
 trap 'abort' INT
 
 
 declare -A computeNodes
-computeNodes=([computer]="192.168.1.1")
+computeNodes=([compute1]="172.16.133.11" \
+              [compute2]="172.16.133.12" \
+              [compute3]="172.16.133.13" \
+              [compute4]="172.16.133.14")
 
 declare -A Nodes
-Nodes=([node1-1]="192.168.1.1" )
+Nodes=([node1-1]="172.16.133.31" \
+       [node2-1]="172.16.133.32" \
+       [node3-1]="172.16.133.33" \
+       [node4-1]="172.16.133.34")
 
 
-BLOCKS="4k 64k 512k 1024k 2048k" 
-DEPTH="16 32 64"
-RW="randwrite write"
-SIZE="100G"
+#BLOCKS="1024k" 
+BLOCKS="4k 64K 256K 1024K" 
+DEPTH="4 32"
+RW="rw randrw"
+
+SIZE="200G"
 ENGINE="libaio"
 DIRECT=1
 RUNTIME=300
 NUMJOBS="1"
+MC=1111
 
 abort()
 {
@@ -38,7 +47,7 @@ abort()
     sshpass -p ${SHPSW} ssh -o StrictHostKeyChecking=no ${Nodes[${node}]} 'pkill fio'
     #sshpass -p ${SHPSW} ssh ${Nodes[${node}]} 'pkill ping'
   done
-  rmdata
+  #rmdata
   exit 1
 }
 
@@ -172,6 +181,7 @@ plot '$1/$2.log' u :6 title 'receive' w line axis x1y1, \
      '$1/$2.log' u :5 title 'send' w line axis x1y2
 EOF
 }
+
 memplot()
 {
   gnuplot<<EOF
@@ -221,88 +231,98 @@ do
     do
       for dep in $DEPTH
       do
+
         for node in 1
         do
           prefix="engine${ENGINE}_rw${rw}_bs${bs}_io${dep}_njob${njobs}"
           echo "clear mem"
-          loop remotecmd "echo 1 > /proc/sys/vm/drop_caches"
+	  loop remotecmd "echo 1 > /proc/sys/vm/drop_caches"
 
-          echo "start monitor"
-          loop start_moniter
+	  echo "start monitor"
+	  loop start_moniter
 	
-          echo "=============run fio============"
-          for key in ${!Nodes[*]}
-          do
-            set -x
-            #sshpass -p ${SHPSW} ssh ${Nodes[${key}]} 'ping 192.168.10.1 > /dev/null & '
-            eval "sshpass -p ${SHPSW} ssh -o StrictHostKeyChecking=no ${Nodes[${key}]} 'fio -direct=${DIRECT} -numjobs=${njobs} -ioengine=${ENGINE} -size=${SIZE} -lockmem=1 -zero_buffers -time_based -rw=$rw -iodepth=${dep} -bs=${bs} -runtime=${RUNTIME} -output=${REMOTEDIR}/result.json -name=hzbank > ${REMOTEDIR}/fio.log 2>&1 &'"
-            set +x
-          done
+	  echo "=============run fio============"
+	  for key in ${!Nodes[*]}
+	  do
+	    set -x
+	    #sshpass -p ${SHPSW} ssh ${Nodes[${key}]} 'ping 192.168.10.1 > /dev/null & '
+	    eval "sshpass -p ${SHPSW} ssh -o StrictHostKeyChecking=no ${Nodes[${key}]} 'fio -directory=/benchmark -direct=${DIRECT} -numjobs=${njobs} -ioengine=${ENGINE} -size=${SIZE} -lockmem=1 -zero_buffers -time_based -rw=$rw -iodepth=${dep} -bs=${bs} -runtime=${RUNTIME}  -output=${REMOTEDIR}/result.json -name=hzbank > ${REMOTEDIR}/fio.log 2>&1 &'"
+
+	    set +x
+	  done
+
           Time=0
+          ST=`date +%s`
           while :
           do
-            echo "time:${Time}"
-            FIN=1
-            I=0
-            for node in ${!Nodes[*]} 
+          echo "time:${Time}"
+	  FIN=${MC}
+	  I=0
+            for node in ${!Nodes[*]}
             do
-              chkprocess ${Nodes[${node}]} fio
-              if [ $? != 0 ]
+	      chkprocess ${Nodes[${node}]} fio
+	      if [ $? != 0 ]
               then
-                x=$[10**${I}]
-                #echo ${x}
-                FIN=`expr ${FIN} - ${x}`
+	        x=$[10**${I}]
+		#echo ${x}
+		FIN=`expr ${FIN} - ${x}`
                 #echo ${FIN}
-              fi
+	      fi
               I=`expr ${I} + 1`
             done
-            if [ ${FIN} == 0 ]
+	    if [ ${FIN} == 0 ]
             then
-              break
-            fi
+	      break
+	    fi
             sleep ${INTERVALTIME}
-            Time=`expr ${Time} + ${INTERVALTIME}`
+            ET=`date +%s`
+            Time=`expr ${ET} - ${ST}`
           done          
           loop stop_moniter
 
-          echo "==============copy back==========="
-          for key in ${!computeNodes[*]}
-          do
+	  echo "==============copy back==========="
+	  for key in ${!computeNodes[*]}
+	  do
             mkdir -p ${TESTDIR}/${key}/${prefix}
-            copylog ${computeNodes[${key}]} $TESTDIR/${key}/${prefix} ${prefix}
-            copylog ${computeNodes[${key}]} $TESTDIR/${key}/${prefix} ${prefix}
-            parse ${TESTDIR}/${key}/${prefix} network_${prefix} eth1
-            netplot ${TESTDIR}/${key}/${prefix} network_${prefix}_eth1
-            parse ${TESTDIR}/${key}/${prefix} network_${prefix} eth2
-            netplot ${TESTDIR}/${key}/${prefix} network_${prefix}_eth2
+	        copylog ${computeNodes[${key}]} $TESTDIR/${key}/${prefix} ${prefix}
+            parse ${TESTDIR}/${key}/${prefix} network_${prefix} eth4
+            netplot ${TESTDIR}/${key}/${prefix} network_${prefix}_eth4
             parse ${TESTDIR}/${key}/${prefix} cpu_${prefix} all
             cpuplot ${TESTDIR}/${key}/${prefix} cpu_${prefix}_all
-            parse ${TESTDIR}/${key}/${prefix} disk_${prefix} sdg
-            diskplot ${TESTDIR}/${key}/${prefix} disk_${prefix}_sdg
+            parse ${TESTDIR}/${key}/${prefix} disk_${prefix} sda
+            diskplot ${TESTDIR}/${key}/${prefix} disk_${prefix}_sda
+          parse ${TESTDIR}/${key}/${prefix} disk_${prefix} sdb
+            diskplot ${TESTDIR}/${key}/${prefix} disk_${prefix}_sdb
+            parse ${TESTDIR}/${key}/${prefix} disk_${prefix} sdc
+            diskplot ${TESTDIR}/${key}/${prefix} disk_${prefix}_sdc
+            parse ${TESTDIR}/${key}/${prefix} disk_${prefix} sdd
+            diskplot ${TESTDIR}/${key}/${prefix} disk_${prefix}_sdd
+             parse ${TESTDIR}/${key}/${prefix} disk_${prefix} sde
+            diskplot ${TESTDIR}/${key}/${prefix} disk_${prefix}_sde
+            parse ${TESTDIR}/${key}/${prefix} disk_${prefix} sdf
+            diskplot ${TESTDIR}/${key}/${prefix} disk_${prefix}_sdf
             memplot ${TESTDIR}/${key}/${prefix} mem_${prefix}            
-          done
+	  done
         
           for key in ${!Nodes[*]}
-          do
+	  do
             mkdir -p ${TESTDIR}/${key}/${prefix}
-            copylog ${Nodes[${key}]} $TESTDIR/${key}/${prefix} ${prefix}
-            copylog ${Nodes[${key}]} $TESTDIR/${key}/${prefix} ${prefix}
-            parse ${TESTDIR}/${key}/${prefix} network_${prefix} eth1
-            netplot ${TESTDIR}/${key}/${prefix} network_${prefix}_eth1
+	        copylog ${Nodes[${key}]} $TESTDIR/${key}/${prefix} ${prefix}
             parse ${TESTDIR}/${key}/${prefix} cpu_${prefix} all
             cpuplot ${TESTDIR}/${key}/${prefix} cpu_${prefix}_all
-            parse ${TESTDIR}/${key}/${prefix} disk_${prefix} xvda
-            diskplot ${TESTDIR}/${key}/${prefix} disk_${prefix}_xvda
+            parse ${TESTDIR}/${key}/${prefix} disk_${prefix} vda
+            diskplot ${TESTDIR}/${key}/${prefix} disk_${prefix}_vda
             memplot ${TESTDIR}/${key}/${prefix} mem_${prefix}
-            #set -x
+	    #set -x
             sshpass -p ${SHPSW} scp -o StrictHostKeyChecking=no root@${Nodes[${key}]}:${REMOTEDIR}/fio.log ${TESTDIR}/${key}/${prefix}/fio_${prefix}.log
             sshpass -p ${SHPSW} scp -o StrictHostKeyChecking=no root@${Nodes[${key}]}:${REMOTEDIR}/result.json ${TESTDIR}/${key}/${prefix}/result_${prefix}.json
             #set +x
-          done 
+	  done 
+
         done
       done
     done
   done
 done
 
-rmdata
+#rmdata
