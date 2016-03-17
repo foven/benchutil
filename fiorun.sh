@@ -3,7 +3,7 @@ LOGDIR=./log
 TESTDIR=$LOGDIR/`date +%Y%m%d%H%M$1`
 REMOTEDIR=/tmp
 INTERVALTIME=10
-SHPSW=hengtian
+SHPSW=1234561
 trap 'abort' INT
 
 
